@@ -25,8 +25,7 @@ try {
 }
 export { messaging }
 
-// VAPID key — reemplazar con la clave de Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
-export const VAPID_KEY = 'TU_VAPID_KEY_AQUI'
+export const VAPID_KEY = 'BGzDwvWuh-FfwZudDvQTq2jZblvhX3dpZOJBeTkpWQSyCH6y4FNW4f_AnTu0HlRFam-YgeV-DZsRm1ioZoPEHm8'
 
 export async function requestNotificationPermission() {
   if (!messaging) return null
