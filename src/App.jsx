@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
-import OneSignal from 'react-onesignal'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import TaskDetail from './components/TaskDetail'
@@ -15,18 +14,19 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState(null)
   const [toast, setToast] = useState(null)
 
-  // Inicializar OneSignal una sola vez
+  // Inicializar OneSignal (cargado via CDN en index.html)
   useEffect(() => {
-    OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      allowLocalhostAsSecureOrigin: true,
-      notifyButton: { enable: false },
-    }).then(() => {
+    window.OneSignalDeferred = window.OneSignalDeferred || []
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: ONESIGNAL_APP_ID,
+        notifyButton: { enable: false },
+      })
       OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
         event.preventDefault()
         showToast(`🔔 ${event.notification.title}`)
       })
-    }).catch(e => console.log('OneSignal init error:', e))
+    })
   }, [])
 
   // Auth + vincular usuario a OneSignal
@@ -34,14 +34,15 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
       if (u) {
-        try {
-          await OneSignal.login(u.uid)
-          OneSignal.Slidedown.promptPush()
-        } catch (e) {
-          console.log('OneSignal login error:', e)
-        }
-      } else {
-        try { await OneSignal.logout() } catch (_) {}
+        window.OneSignalDeferred = window.OneSignalDeferred || []
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.login(u.uid)
+            await OneSignal.Slidedown.promptPush()
+          } catch (e) {
+            console.log('OneSignal login error:', e)
+          }
+        })
       }
     })
     return unsub
