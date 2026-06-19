@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase'
 
@@ -29,12 +29,16 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
   const [tab, setTab] = useState('mine')
 
   useEffect(() => {
-    const q = tab === 'mine'
-      ? query(collection(db, 'tasks'), where('assignees', 'array-contains', user.uid), orderBy('createdAt', 'desc'))
-      : query(collection(db, 'tasks'), orderBy('createdAt', 'desc'))
+    // Usamos solo orderBy para evitar índices compuestos en Firestore
+    const q = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'))
 
     const unsub = onSnapshot(q, (snap) => {
-      setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      let all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      // Filtrar en cliente para "mis tareas"
+      if (tab === 'mine') {
+        all = all.filter(t => t.assignees?.includes(user.uid))
+      }
+      setTasks(all)
       setLoading(false)
     }, (err) => {
       console.error(err)
