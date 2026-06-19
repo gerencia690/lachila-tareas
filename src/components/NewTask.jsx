@@ -2,6 +2,30 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 
+const ONESIGNAL_APP_ID = '35eed05c-9dc4-4f8a-ac58-e723e383b5be'
+const ONESIGNAL_REST_KEY = 'os_v2_app_gxxnaxe5yrhyvlcy44r6ha5vxzjhkk22f5lucg4zdoo7aqrgwwy4srggvkiefoljldzn4fgyr3qubaqiquixjxdnynjpcmbi7jtg66i'
+
+async function sendPushToAssignees(taskTitle, assigneeIds, creatorName) {
+  try {
+    await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_REST_KEY}`
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_aliases: { external_id: assigneeIds },
+        target_channel: 'push',
+        headings: { es: '📋 Nueva tarea asignada', en: '📋 New task assigned' },
+        contents: { es: `${taskTitle} — asignada por ${creatorName}`, en: `${taskTitle} — assigned by ${creatorName}` }
+      })
+    })
+  } catch (e) {
+    console.log('Error enviando notificación push:', e)
+  }
+}
+
 export default function NewTask({ user, onBack, showToast }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -15,7 +39,6 @@ export default function NewTask({ user, onBack, showToast }) {
     getDocs(query(collection(db, 'users'), orderBy('name'))).then(snap => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setUsers(list)
-      // Pre-seleccionar al usuario actual si no está en la lista
       const me = list.find(u => u.id === user.uid)
       if (me) {
         setSelected([me.id])
@@ -26,7 +49,7 @@ export default function NewTask({ user, onBack, showToast }) {
 
   function toggleUser(u) {
     if (selected.includes(u.id)) {
-      if (selected.length === 1) return // al menos uno siempre
+      if (selected.length === 1) return
       setSelected(s => s.filter(id => id !== u.id))
       setSelectedNames(n => n.filter(name => name !== u.name))
     } else {
@@ -53,6 +76,13 @@ export default function NewTask({ user, onBack, showToast }) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
+
+      // Notificar a los asignados (excepto al creador)
+      const toNotify = selected.filter(id => id !== user.uid)
+      if (toNotify.length > 0) {
+        await sendPushToAssignees(title.trim(), toNotify, user.displayName || user.email)
+      }
+
       showToast('✅ Tarea creada correctamente')
       onBack()
     } catch (err) {
@@ -72,7 +102,6 @@ export default function NewTask({ user, onBack, showToast }) {
       </div>
 
       <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 100px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {/* Título */}
         <div>
           <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--gray-600)', display: 'block', marginBottom: '6px' }}>Título *</label>
           <input
@@ -85,7 +114,6 @@ export default function NewTask({ user, onBack, showToast }) {
           />
         </div>
 
-        {/* Descripción */}
         <div>
           <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--gray-600)', display: 'block', marginBottom: '6px' }}>Descripción</label>
           <textarea
@@ -96,7 +124,6 @@ export default function NewTask({ user, onBack, showToast }) {
           />
         </div>
 
-        {/* Fecha límite */}
         <div>
           <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--gray-600)', display: 'block', marginBottom: '6px' }}>📅 Fecha límite</label>
           <input
@@ -107,7 +134,6 @@ export default function NewTask({ user, onBack, showToast }) {
           />
         </div>
 
-        {/* Asignar a */}
         <div>
           <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--gray-600)', display: 'block', marginBottom: '10px' }}>👥 Asignar a</label>
           {users.length === 0 ? (
@@ -143,7 +169,6 @@ export default function NewTask({ user, onBack, showToast }) {
         </div>
       </form>
 
-      {/* Botón fijo abajo */}
       <div style={{ position: 'sticky', bottom: 0, padding: '16px', background: '#fff', borderTop: '1px solid var(--gray-200)' }}>
         <button className="btn btn-brand" onClick={handleSubmit} disabled={loading || !title.trim()}>
           {loading ? 'Creando...' : 'Crear tarea'}
