@@ -21,12 +21,17 @@ export default async function handler(req, res) {
     const db = getFirestore()
     const messaging = getMessaging()
 
-    // Obtener tokens FCM de los asignados
+    // Obtener tokens FCM de los asignados (soporta array y campo único)
     const tokens = []
     for (const uid of assigneeIds) {
       const userDoc = await db.collection('users').doc(uid).get()
-      if (userDoc.exists && userDoc.data().fcmToken) {
-        tokens.push(userDoc.data().fcmToken)
+      if (userDoc.exists) {
+        const data = userDoc.data()
+        if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
+          tokens.push(...data.fcmTokens)
+        } else if (data.fcmToken) {
+          tokens.push(data.fcmToken)
+        }
       }
     }
 

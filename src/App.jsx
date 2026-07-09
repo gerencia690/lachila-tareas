@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, setDoc, arrayUnion } from 'firebase/firestore'
 import { auth, db, requestNotificationPermission } from './firebase'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
@@ -21,7 +21,8 @@ export default function App() {
         try {
           const token = await requestNotificationPermission()
           if (token) {
-            await updateDoc(doc(db, 'users', u.uid), { fcmToken: token })
+            // Guardar como array para soportar múltiples dispositivos por usuario
+            await setDoc(doc(db, 'users', u.uid), { fcmTokens: arrayUnion(token) }, { merge: true })
           }
         } catch (e) {
           console.log('FCM error:', e)
