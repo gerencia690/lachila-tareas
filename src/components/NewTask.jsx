@@ -15,8 +15,8 @@ async function sendPushToAssignees(taskTitle, assigneeIds, creatorName) {
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
-        include_aliases: { external_id: assigneeIds },
-        target_channel: 'push',
+        include_external_user_ids: assigneeIds,
+        channel_for_external_user_ids: 'push',
         headings: { es: '📋 Nueva tarea asignada', en: '📋 New task assigned' },
         contents: { es: `${taskTitle} — asignada por ${creatorName}`, en: `${taskTitle} — assigned by ${creatorName}` },
         android_sound: 'notification',
