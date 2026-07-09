@@ -18,7 +18,10 @@ async function sendPushToAssignees(taskTitle, assigneeIds, creatorName) {
         include_aliases: { external_id: assigneeIds },
         target_channel: 'push',
         headings: { es: '📋 Nueva tarea asignada', en: '📋 New task assigned' },
-        contents: { es: `${taskTitle} — asignada por ${creatorName}`, en: `${taskTitle} — assigned by ${creatorName}` }
+        contents: { es: `${taskTitle} — asignada por ${creatorName}`, en: `${taskTitle} — assigned by ${creatorName}` },
+        android_sound: 'notification',
+        ios_sound: 'default',
+        priority: 10
       })
     })
   } catch (e) {

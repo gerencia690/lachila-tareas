@@ -37,10 +37,10 @@ export default function App() {
         window.OneSignalDeferred = window.OneSignalDeferred || []
         window.OneSignalDeferred.push(async function(OneSignal) {
           try {
+            await OneSignal.Notifications.requestPermission()
             await OneSignal.login(u.uid)
-            await OneSignal.Slidedown.promptPush()
           } catch (e) {
-            console.log('OneSignal login error:', e)
+            console.log('OneSignal error:', e)
           }
         })
       }
