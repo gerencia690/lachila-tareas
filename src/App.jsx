@@ -37,7 +37,12 @@ export default function App() {
         window.OneSignalDeferred = window.OneSignalDeferred || []
         window.OneSignalDeferred.push(async function(OneSignal) {
           try {
-            await OneSignal.Notifications.requestPermission()
+            // Si ya tiene permiso, forzar suscripción activa
+            if (Notification.permission === 'granted') {
+              await OneSignal.User.PushSubscription.optIn()
+            } else {
+              await OneSignal.Notifications.requestPermission()
+            }
             await OneSignal.login(u.uid)
           } catch (e) {
             console.log('OneSignal error:', e)
