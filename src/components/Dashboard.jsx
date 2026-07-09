@@ -27,6 +27,30 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('mine')
+  const [notifGranted, setNotifGranted] = useState(true) // asume true hasta verificar
+
+  useEffect(() => {
+    // Verificar si ya tiene permiso de notificaciones
+    if ('Notification' in window) {
+      setNotifGranted(Notification.permission === 'granted')
+    }
+  }, [])
+
+  async function enableNotifications() {
+    window.OneSignalDeferred = window.OneSignalDeferred || []
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      try {
+        const granted = await OneSignal.Notifications.requestPermission()
+        if (granted) {
+          await OneSignal.login(user.uid)
+          setNotifGranted(true)
+          showToast('✅ Notificaciones activadas')
+        }
+      } catch (e) {
+        console.log('Error activando notificaciones:', e)
+      }
+    })
+  }
 
   useEffect(() => {
     // Usamos solo orderBy para evitar índices compuestos en Firestore
@@ -81,6 +105,21 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
           </div>
         </div>
       </div>
+
+      {/* Banner habilitar notificaciones */}
+      {!notifGranted && (
+        <div
+          onClick={enableNotifications}
+          style={{ background: '#FEF3C7', borderBottom: '1px solid #FDE68A', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '20px' }}>🔔</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '13px', fontWeight: '600', color: '#92400E' }}>Activa las notificaciones</p>
+            <p style={{ fontSize: '12px', color: '#B45309' }}>Toca aquí para recibir avisos cuando te asignen tareas</p>
+          </div>
+          <span style={{ color: '#92400E', fontSize: '18px' }}>›</span>
+        </div>
+      )}
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', padding: '16px 16px 8px' }}>

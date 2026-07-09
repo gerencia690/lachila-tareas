@@ -1,24 +1,26 @@
 import { useState } from 'react'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
 export default function Login() {
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState('login') // 'login' | 'register' | 'forgot'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
     try {
       if (mode === 'login') {
         await signInWithEmailAndPassword(auth, email, password)
-      } else {
+      } else if (mode === 'register') {
         const cred = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(cred.user, { displayName: name })
         await setDoc(doc(db, 'users', cred.user.uid), {
@@ -26,6 +28,11 @@ export default function Login() {
           email,
           createdAt: new Date()
         })
+      } else if (mode === 'forgot') {
+        await sendPasswordResetEmail(auth, email)
+        setSuccess('Te enviamos un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.')
+        setLoading(false)
+        return
       }
     } catch (err) {
       const msgs = {
@@ -39,6 +46,12 @@ export default function Login() {
       setError(msgs[err.code] || 'Error al iniciar sesión')
     }
     setLoading(false)
+  }
+
+  function changeMode(newMode) {
+    setMode(newMode)
+    setError('')
+    setSuccess('')
   }
 
   return (
@@ -55,10 +68,12 @@ export default function Login() {
       {/* Formulario */}
       <div style={{ padding: '28px 24px', flex: 1 }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '6px' }}>
-          {mode === 'login' ? 'Bienvenido' : 'Crear cuenta'}
+          {mode === 'login' ? 'Bienvenido' : mode === 'register' ? 'Crear cuenta' : 'Recuperar contraseña'}
         </h2>
         <p style={{ color: 'var(--gray-400)', fontSize: '14px', marginBottom: '24px' }}>
-          {mode === 'login' ? 'Ingresa tus datos para continuar' : 'Completa los datos del equipo'}
+          {mode === 'login' ? 'Ingresa tus datos para continuar'
+            : mode === 'register' ? 'Completa los datos del equipo'
+            : 'Te enviaremos un correo para restablecer tu contraseña'}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -74,6 +89,7 @@ export default function Login() {
               />
             </div>
           )}
+
           <div>
             <label style={{ fontSize: '13px', color: 'var(--gray-600)', marginBottom: '6px', display: 'block' }}>Correo electrónico</label>
             <input
@@ -84,16 +100,27 @@ export default function Login() {
               required
             />
           </div>
-          <div>
-            <label style={{ fontSize: '13px', color: 'var(--gray-600)', marginBottom: '6px', display: 'block' }}>Contraseña</label>
-            <input
-              type="password"
-              placeholder="Mínimo 6 caracteres"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-            />
-          </div>
+
+          {mode !== 'forgot' && (
+            <div>
+              <label style={{ fontSize: '13px', color: 'var(--gray-600)', marginBottom: '6px', display: 'block' }}>Contraseña</label>
+              <input
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+              {mode === 'login' && (
+                <span
+                  style={{ fontSize: '13px', color: 'var(--brand)', cursor: 'pointer', display: 'block', marginTop: '6px', textAlign: 'right' }}
+                  onClick={() => changeMode('forgot')}
+                >
+                  ¿Olvidaste tu contraseña?
+                </span>
+              )}
+            </div>
+          )}
 
           {error && (
             <div style={{ background: '#FEE2E2', color: '#991B1B', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '14px' }}>
@@ -101,19 +128,43 @@ export default function Login() {
             </div>
           )}
 
+          {success && (
+            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '14px' }}>
+              {success}
+            </div>
+          )}
+
           <button className="btn btn-brand" type="submit" disabled={loading} style={{ marginTop: '8px' }}>
-            {loading ? 'Cargando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+            {loading ? 'Cargando...'
+              : mode === 'login' ? 'Entrar'
+              : mode === 'register' ? 'Crear cuenta'
+              : 'Enviar correo de recuperación'}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--gray-600)', marginTop: '24px' }}>
-          {mode === 'login' ? '¿Eres nuevo en el equipo? ' : '¿Ya tienes cuenta? '}
-          <span
-            style={{ color: 'var(--brand)', cursor: 'pointer', fontWeight: '500' }}
-            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-          >
-            {mode === 'login' ? 'Crear cuenta' : 'Inicia sesión'}
-          </span>
+          {mode === 'forgot' ? (
+            <>
+              {'¿Ya recordaste? '}
+              <span style={{ color: 'var(--brand)', cursor: 'pointer', fontWeight: '500' }} onClick={() => changeMode('login')}>
+                Inicia sesión
+              </span>
+            </>
+          ) : mode === 'login' ? (
+            <>
+              {'¿Eres nuevo en el equipo? '}
+              <span style={{ color: 'var(--brand)', cursor: 'pointer', fontWeight: '500' }} onClick={() => changeMode('register')}>
+                Crear cuenta
+              </span>
+            </>
+          ) : (
+            <>
+              {'¿Ya tienes cuenta? '}
+              <span style={{ color: 'var(--brand)', cursor: 'pointer', fontWeight: '500' }} onClick={() => changeMode('login')}>
+                Inicia sesión
+              </span>
+            </>
+          )}
         </p>
       </div>
     </div>
