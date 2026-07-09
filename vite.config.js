@@ -6,12 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'logo.png'],
       manifest: {
         name: 'La Chila Tareas',
         short_name: 'LaChila',
-        description: 'Gestión de tareas para el equipo de La Chila',
+        description: 'Gestion de tareas para el equipo de La Chila',
         theme_color: '#C05A28',
         background_color: '#ffffff',
         display: 'standalone',
@@ -22,9 +25,6 @@ export default defineConfig({
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
   ]

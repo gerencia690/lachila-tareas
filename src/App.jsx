@@ -17,15 +17,19 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
       if (u) {
-        // Registrar token FCM y guardarlo en Firestore
+        // Registrar suscripción push y guardarla en Firestore
         try {
-          const token = await requestNotificationPermission()
-          if (token) {
+          const subscription = await requestNotificationPermission()
+          if (subscription) {
             // Guardar como array para soportar múltiples dispositivos por usuario
-            await setDoc(doc(db, 'users', u.uid), { fcmTokens: arrayUnion(token) }, { merge: true })
+            await setDoc(
+              doc(db, 'users', u.uid),
+              { pushSubscriptions: arrayUnion(subscription) },
+              { merge: true }
+            )
           }
         } catch (e) {
-          console.log('FCM error:', e)
+          console.log('Push error:', e)
         }
       }
     })

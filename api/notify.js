@@ -1,5 +1,5 @@
+import webpush from 'web-push'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getMessaging } from 'firebase-admin/messaging'
 import { getFirestore } from 'firebase-admin/firestore'
 
 if (!getApps().length) {
@@ -12,68 +12,57 @@ if (!getApps().length) {
   })
 }
 
+webpush.setVapidDetails(
+  'mailto:gerencia@lachila.com',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+)
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   try {
     const { taskTitle, assigneeIds, creatorName } = req.body
-
     const db = getFirestore()
-    const messaging = getMessaging()
 
-    // Obtener tokens FCM de los asignados (soporta array y campo único)
-    const tokens = []
-    for (const uid of assigneeIds) {
-      const userDoc = await db.collection('users').doc(uid).get()
-      if (userDoc.exists) {
-        const data = userDoc.data()
-        if (data.fcmTokens && Array.isArray(data.fcmTokens)) {
-          tokens.push(...data.fcmTokens)
-        } else if (data.fcmToken) {
-          tokens.push(data.fcmToken)
-        }
-      }
-    }
-
-    if (tokens.length === 0) {
-      return res.json({ success: false, message: 'No hay tokens FCM registrados' })
-    }
-
-    const response = await messaging.sendEachForMulticast({
-      tokens,
-      notification: {
-        title: '📋 Nueva tarea asignada',
-        body: `${taskTitle} — asignada por ${creatorName}`
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'tasks',
-          priority: 'high'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            'content-available': 1
-          }
-        }
-      },
-      webpush: {
-        notification: {
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          vibrate: [200, 100, 200]
-        }
-      }
+    const payload = JSON.stringify({
+      title: '📋 Nueva tarea asignada',
+      body: `${taskTitle} — asignada por ${creatorName}`
     })
 
-    res.json({ success: true, sent: response.successCount, failed: response.failureCount })
+    let sent = 0
+    let failed = 0
+
+    for (const uid of assigneeIds) {
+      const userDoc = await db.collection('users').doc(uid).get()
+      if (!userDoc.exists) continue
+
+      const data = userDoc.data()
+      const subscriptions = []
+
+      // Suscripciones nativas Web Push (nuevo formato)
+      if (data.pushSubscriptions && Array.isArray(data.pushSubscriptions)) {
+        subscriptions.push(...data.pushSubscriptions)
+      }
+      if (data.pushSubscription) {
+        subscriptions.push(data.pushSubscription)
+      }
+
+      for (const subStr of subscriptions) {
+        try {
+          const sub = typeof subStr === 'string' ? JSON.parse(subStr) : subStr
+          await webpush.sendNotification(sub, payload)
+          sent++
+        } catch (e) {
+          console.log('Error enviando push:', e.statusCode, e.body)
+          failed++
+        }
+      }
+    }
+
+    res.json({ success: true, sent, failed })
   } catch (e) {
-    console.error('Error enviando notificación FCM:', e)
+    console.error('Error en notify:', e)
     res.status(500).json({ success: false, error: e.message })
   }
 }
