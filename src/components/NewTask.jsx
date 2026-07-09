@@ -2,30 +2,15 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 
-const ONESIGNAL_APP_ID = '35eed05c-9dc4-4f8a-ac58-e723e383b5be'
-const ONESIGNAL_REST_KEY = 'os_v2_app_gxxnaxe5yrhyvlcy44r6ha5vxzjhkk22f5lucg4zdoo7aqrgwwy4srggvkiefoljldzn4fgyr3qubaqiquixjxdnynjpcmbi7jtg66i'
-
 async function sendPushToAssignees(taskTitle, assigneeIds, creatorName) {
   try {
-    await fetch('https://onesignal.com/api/v1/notifications', {
+    await fetch('/api/notify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONESIGNAL_REST_KEY}`
-      },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        include_external_user_ids: assigneeIds,
-        channel_for_external_user_ids: 'push',
-        headings: { es: '📋 Nueva tarea asignada', en: '📋 New task assigned' },
-        contents: { es: `${taskTitle} — asignada por ${creatorName}`, en: `${taskTitle} — assigned by ${creatorName}` },
-        android_sound: 'notification',
-        ios_sound: 'default',
-        priority: 10
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskTitle, assigneeIds, creatorName })
     })
   } catch (e) {
-    console.log('Error enviando notificación push:', e)
+    console.log('Error enviando notificación:', e)
   }
 }
 

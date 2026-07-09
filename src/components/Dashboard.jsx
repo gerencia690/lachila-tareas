@@ -37,19 +37,18 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
   }, [])
 
   async function enableNotifications() {
-    window.OneSignalDeferred = window.OneSignalDeferred || []
-    window.OneSignalDeferred.push(async function(OneSignal) {
-      try {
-        const granted = await OneSignal.Notifications.requestPermission()
-        if (granted) {
-          await OneSignal.login(user.uid)
-          setNotifGranted(true)
-          showToast('✅ Notificaciones activadas')
-        }
-      } catch (e) {
-        console.log('Error activando notificaciones:', e)
+    try {
+      const { requestNotificationPermission } = await import('../firebase')
+      const { doc, updateDoc } = await import('firebase/firestore')
+      const token = await requestNotificationPermission()
+      if (token) {
+        await updateDoc(doc(db, 'users', user.uid), { fcmToken: token })
+        setNotifGranted(true)
+        showToast('✅ Notificaciones activadas')
       }
-    })
+    } catch (e) {
+      console.log('Error activando notificaciones:', e)
+    }
   }
 
   useEffect(() => {

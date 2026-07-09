@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from './firebase'
+import { doc, updateDoc } from 'firebase/firestore'
+import { auth, db, requestNotificationPermission } from './firebase'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import TaskDetail from './components/TaskDetail'
 import NewTask from './components/NewTask'
-
-const ONESIGNAL_APP_ID = '35eed05c-9dc4-4f8a-ac58-e723e383b5be'
 
 export default function App() {
   const [user, setUser] = useState(undefined)
@@ -14,40 +13,19 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState(null)
   const [toast, setToast] = useState(null)
 
-  // Inicializar OneSignal (cargado via CDN en index.html)
-  useEffect(() => {
-    window.OneSignalDeferred = window.OneSignalDeferred || []
-    window.OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: ONESIGNAL_APP_ID,
-        notifyButton: { enable: false },
-      })
-      OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
-        event.preventDefault()
-        showToast(`🔔 ${event.notification.title}`)
-      })
-    })
-  }, [])
-
-  // Auth + vincular usuario a OneSignal
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
       if (u) {
-        window.OneSignalDeferred = window.OneSignalDeferred || []
-        window.OneSignalDeferred.push(async function(OneSignal) {
-          try {
-            // Si ya tiene permiso, forzar suscripción activa
-            if (Notification.permission === 'granted') {
-              await OneSignal.User.PushSubscription.optIn()
-            } else {
-              await OneSignal.Notifications.requestPermission()
-            }
-            await OneSignal.login(u.uid)
-          } catch (e) {
-            console.log('OneSignal error:', e)
+        // Registrar token FCM y guardarlo en Firestore
+        try {
+          const token = await requestNotificationPermission()
+          if (token) {
+            await updateDoc(doc(db, 'users', u.uid), { fcmToken: token })
           }
-        })
+        } catch (e) {
+          console.log('FCM error:', e)
+        }
       }
     })
     return unsub
