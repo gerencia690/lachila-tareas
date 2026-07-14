@@ -32,6 +32,7 @@ export default async function handler(req, res) {
 
     let sent = 0
     let failed = 0
+    const errors = []
 
     for (const uid of assigneeIds) {
       const userDoc = await db.collection('users').doc(uid).get()
@@ -49,10 +50,11 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('Error enviando push:', e.statusCode, e.body)
         failed++
+        errors.push({ uid, statusCode: e.statusCode, body: String(e.body).substring(0, 200) })
       }
     }
 
-    res.json({ success: true, sent, failed })
+    res.json({ success: true, sent, failed, errors })
   } catch (e) {
     console.error('Error en notify:', e)
     res.status(500).json({ success: false, error: e.message })
