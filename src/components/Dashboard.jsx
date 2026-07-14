@@ -39,10 +39,10 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
   async function enableNotifications() {
     try {
       const { requestNotificationPermission } = await import('../firebase')
-      const { doc, setDoc, arrayUnion } = await import('firebase/firestore')
+      const { doc, setDoc } = await import('firebase/firestore')
       const subscription = await requestNotificationPermission()
       if (subscription) {
-        await setDoc(doc(db, 'users', user.uid), { pushSubscriptions: arrayUnion(subscription) }, { merge: true })
+        await setDoc(doc(db, 'users', user.uid), { pushSubscription: subscription }, { merge: true })
         setNotifGranted(true)
         showToast('✅ Notificaciones activadas')
       }

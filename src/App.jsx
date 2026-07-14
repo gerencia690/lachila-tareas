@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, setDoc, arrayUnion } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import { auth, db, requestNotificationPermission } from './firebase'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
@@ -22,9 +22,10 @@ export default function App() {
           const subscription = await requestNotificationPermission()
           if (subscription) {
             // Guardar como array para soportar múltiples dispositivos por usuario
+            // Sobrescribir suscripción de este dispositivo (limpia las inválidas)
             await setDoc(
               doc(db, 'users', u.uid),
-              { pushSubscriptions: arrayUnion(subscription) },
+              { pushSubscription: subscription },
               { merge: true }
             )
           }

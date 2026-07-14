@@ -46,14 +46,15 @@ export async function requestNotificationPermission() {
     // Usar el service worker activo (el que registra vite-plugin-pwa)
     const swRegistration = await navigator.serviceWorker.ready
 
-    // Verificar si ya hay suscripción activa
-    let subscription = await swRegistration.pushManager.getSubscription()
-    if (!subscription) {
-      subscription = await swRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      })
-    }
+    // Limpiar suscripción anterior (puede estar ligada a clave VAPID diferente)
+    const oldSub = await swRegistration.pushManager.getSubscription()
+    if (oldSub) await oldSub.unsubscribe()
+
+    // Crear suscripción fresca con nuestra clave VAPID
+    const subscription = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    })
 
     return JSON.stringify(subscription)
   } catch (e) {
