@@ -28,6 +28,7 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('mine')
   const [notifGranted, setNotifGranted] = useState(true) // asume true hasta verificar
+  const [testingPush, setTestingPush] = useState(false)
 
   useEffect(() => {
     // Verificar si ya tiene permiso de notificaciones
@@ -35,6 +36,28 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
       setNotifGranted(Notification.permission === 'granted')
     }
   }, [])
+
+  async function testPushNotification() {
+    setTestingPush(true)
+    try {
+      const res = await fetch('/api/test-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid })
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast('📨 Prueba enviada — deberías recibir la notificación')
+      } else {
+        showToast('❌ Error: ' + (data.error || 'No se pudo enviar'))
+        console.error('test-push error:', data)
+      }
+    } catch (e) {
+      showToast('❌ Error de red al probar')
+      console.error(e)
+    }
+    setTestingPush(false)
+  }
 
   async function enableNotifications() {
     try {
@@ -106,7 +129,7 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
       </div>
 
       {/* Banner habilitar notificaciones */}
-      {!notifGranted && (
+      {!notifGranted ? (
         <div
           onClick={enableNotifications}
           style={{ background: '#FEF3C7', borderBottom: '1px solid #FDE68A', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
@@ -117,6 +140,16 @@ export default function Dashboard({ user, onOpenTask, onNewTask, showToast }) {
             <p style={{ fontSize: '12px', color: '#B45309' }}>Toca aquí para recibir avisos cuando te asignen tareas</p>
           </div>
           <span style={{ color: '#92400E', fontSize: '18px' }}>›</span>
+        </div>
+      ) : (
+        <div style={{ borderBottom: '1px solid var(--gray-200)', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <button
+            onClick={testPushNotification}
+            disabled={testingPush}
+            style={{ fontSize: '12px', color: 'var(--gray-400)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+          >
+            {testingPush ? 'Enviando...' : '🔔 Probar notificación'}
+          </button>
         </div>
       )}
 

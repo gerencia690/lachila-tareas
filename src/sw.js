@@ -3,6 +3,10 @@ import { precacheAndRoute } from 'workbox-precaching'
 // Inyectado por vite-plugin-pwa en build
 precacheAndRoute(self.__WB_MANIFEST || [])
 
+// Tomar control inmediatamente sin esperar que el usuario cierre todas las pestañas
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()))
+
 // Manejar notificaciones push nativas (funciona en Android e iOS PWA)
 self.addEventListener('push', event => {
   if (!event.data) return
