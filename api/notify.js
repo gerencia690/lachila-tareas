@@ -38,25 +38,17 @@ export default async function handler(req, res) {
       if (!userDoc.exists) continue
 
       const data = userDoc.data()
-      const subscriptions = []
+      // Solo usar pushSubscription (singular, el más reciente y válido)
+      const subStr = data.pushSubscription
+      if (!subStr) continue
 
-      // Suscripciones nativas Web Push (nuevo formato)
-      if (data.pushSubscriptions && Array.isArray(data.pushSubscriptions)) {
-        subscriptions.push(...data.pushSubscriptions)
-      }
-      if (data.pushSubscription) {
-        subscriptions.push(data.pushSubscription)
-      }
-
-      for (const subStr of subscriptions) {
-        try {
-          const sub = typeof subStr === 'string' ? JSON.parse(subStr) : subStr
-          await webpush.sendNotification(sub, payload)
-          sent++
-        } catch (e) {
-          console.log('Error enviando push:', e.statusCode, e.body)
-          failed++
-        }
+      try {
+        const sub = typeof subStr === 'string' ? JSON.parse(subStr) : subStr
+        await webpush.sendNotification(sub, payload)
+        sent++
+      } catch (e) {
+        console.error('Error enviando push:', e.statusCode, e.body)
+        failed++
       }
     }
 
